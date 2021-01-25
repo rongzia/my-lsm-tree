@@ -7,18 +7,21 @@
 
 #include "buffer_.h"
 #include "level_.h"
+#include "worker_pool_.h"
 #include "merge_.h"
-#include "vector"
-using namespace std;
+
 
 class LSMTree {
 private:
+
+    boost::shared_mutex mutex;
     Buffer buffer;
     float bf_bits_per_entry;
-    std::vector<Level> levels;
+    vector<Level*> levels;
     DataStore dataStore;
+//    WorkerPool worker_pool;
 
-    void merge_down(std::vector<Level>::iterator);
+    void merge_down(vector<Level*>::iterator current_level);
     RetCode search_run(entry_t* entry);
 public:
     LSMTree(int buffer_size, int bits_per_entry, int num_threads, int depth, int fanout);

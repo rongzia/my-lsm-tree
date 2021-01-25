@@ -1,12 +1,20 @@
-cmake_minimum_required(VERSION 3.13)
-project(lsm_tree_1)
-
+cmake_minimum_required(VERSION 3.12)
+project(lsm-tree)
 set(CMAKE_CXX_STANDARD 11)
 
-include_directories(my-src)
+set(BOOST_ROOT /usr/local/boost)
+find_package(Boost REQUIRED COMPONENTS thread )
+message("${Boost_INCLUDE_DIRS}")
+message("${Boost_LIBRARIES}")
+
+#include_directories(generator)
+include_directories(lib)
 include_directories(src)
 
-add_executable(lsm_tree_1
+add_executable(lsm-tree
+        my-test/test.cc
+
+        #        lib/thread_pool.h
         my-src/bloomfilter_.cpp
         my-src/bloomfilter_.h
         my-src/buffer_.cpp
@@ -24,26 +32,8 @@ add_executable(lsm_tree_1
         my-src/sst_.h
         my-src/util.cc
         my-src/util.h
-#        my-src/worker_pool_.cpp
-#        my-src/worker_pool_.h
-#        my-test/string_char.cpp
-#        my-test/test-bloomfilter.cpp
-#        my-test/test-boost.cpp
-#        my-test/test-buffer.cpp
-#        my-test/test-cmp-string.cpp
-#        my-test/test-coppare-char.cpp
-#        my-test/test-dataStore.cpp
-#        my-test/test-deque.cpp
-#        my-test/test-duoluguibing.cpp
-#        my-test/test-entry.cpp
-#        my-test/test-lower_bound.cpp
-        my-test/test-lsm.cpp
-#        my-test/test-merge-entry.cpp
-#        my-test/test-merge.cpp
-#        my-test/test-min.cpp
-#        my-test/test-mmap.cpp
-#        my-test/test-run.cpp
-#        my-test/test-vector-subrange.cpp
-#        my-test/test-zhizhen-yinyong.cpp
-#        my-test/test.cc
+        #        my-src/worker_pool_.cpp
+        #        my-src/worker_pool_.h
+
         )
+target_link_libraries(lsm-tree Boost::thread)

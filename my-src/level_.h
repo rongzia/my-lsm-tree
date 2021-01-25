@@ -16,12 +16,9 @@ private:
     long size_per_run;
 
 public:
-    std::deque<Run> runs;
-//    int num_used_run;
+    std::deque<Run*> runs;
 
-    Level(int num, long size, int id) : num_run(num), size_per_run(size), level_id(id)
-//    , num_used_run(0)
-    {}
+    Level(int num, long size, int id) : num_run(num), size_per_run(size), level_id(id){}
 
     bool remaining() const { return num_run > runs.size(); }
 
@@ -29,7 +26,13 @@ public:
 
     int get_Level_id() { return this->level_id; }
     int get_num_run() { return this->num_run; }
-//    deque<Run> get_runs() const& { return this->runs; }
+
+    void clear(){
+        for(auto &run: runs ){
+            delete run;
+        }
+        runs.clear();
+    }
 
 };
 

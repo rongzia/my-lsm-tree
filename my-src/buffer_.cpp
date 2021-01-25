@@ -6,6 +6,7 @@
 #include "buffer_.h"
 
 RetCode Buffer::put(const entry_t &entry) {
+    boost::unique_lock<boost::shared_mutex> ul(rwmutex);
     if (entries.size() == size) {
         return bufferFull;
     }
@@ -20,6 +21,7 @@ RetCode Buffer::put(const entry_t &entry) {
 }
 
 RetCode Buffer::get(entry_t* entry) const {
+//    boost::unique_lock<boost::shared_mutex> ul(rwmutex);
     std::set<entry_t>::iterator it_entry = entries.find(*entry);
 
     if (it_entry == entries.end()) {

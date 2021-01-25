@@ -101,15 +101,17 @@ entry_t Run::lower_bound_(entry_t *entries, size_t size, entry_t key)
     return entries[first];
 }
 
-RetCode Run::get(entry_t* entry) {
-//    std::cout << "in Run::get" << std::endl;
-    size_t fence_index = 0;
-    KEY_t key((*entry).key, MAX_KEY_LENGTH);
+RetCode Run::get(entry_t* entry) {      //    std::cout << "in Run::get" << std::endl;
+
+    boost::unique_lock<boost::shared_mutex> ul(mutex);
+
     RetCode ret = keyNotFound;
 
     mapping(0,  size * sizeof(entry_t));
     entry_t search_entry  = lower_bound_(entry_ptr, size, *entry);
-    if(* entry == search_entry){
+    ul.unlock();
+
+    if(*entry == search_entry){
         (*entry).location = search_entry.location;
         ret = succ;
     }
@@ -117,11 +119,6 @@ RetCode Run::get(entry_t* entry) {
     return ret;
 }
 
-//std::vector<entry_t>* Run::range(KEY_t start_key, KEY_t end_key) {
-//
-//}
-
 void Run::deletefile() {
-    remove(sst.path.c_str());
-//    std::cout<<"deleted "<<sst.path.c_str()<<std::endl;
+    remove(sst.path.c_str());       //    std::cout<<"deleted "<<sst.path.c_str()<<std::endl;
 }

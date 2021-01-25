@@ -32,6 +32,7 @@ private:
     Location next_location_;
 
     RetCode OpenCurFile();
+    boost::shared_mutex rwmutex;
 };
 
 #endif  // ENGINE_SIMPLE_DATA_STORE_H_

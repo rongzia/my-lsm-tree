@@ -11,24 +11,6 @@
 
 #include "../my-src/lsm_tree_.h"
 
-
-//class DumpVisitor : public Visitor {
-//public:
-//  DumpVisitor(int* kcnt)
-//    : key_cnt_(kcnt) {}
-//
-//  ~DumpVisitor() {}
-//
-//  void Visit(const PolarString& key, const PolarString& value) {
-//    printf("Visit %s --> %s\n", key.data(), value.data());
-//    (*key_cnt_)++;
-//  }
-//
-//private:
-//  int* key_cnt_;
-//};
-
-
 template <typename T>
 class threadsafe_vector : public std::vector<T>
 {
@@ -156,85 +138,11 @@ void randomRead(LSMTree* lsmTree, const threadsafe_vector<std::string>& keys, un
     }
 }
 
-//class MyVisitor : public Visitor
-//{
-//public:
-//    MyVisitor(const threadsafe_vector<std::string>& keys, unsigned start, unsigned& cnt)
-//        : mKeys(keys), mStart(start), mCnt(cnt)
-//    {}
-//
-//    ~MyVisitor() {}
-//
-//    void Visit(const PolarString& key, const PolarString& value)
-//    {
-//        if (key != key_from_value(value.ToString())) {
-//            std::cout << "Sequential Read error: key and value not match" << std::endl;
-//            exit(-1);
-//        }
-//        if (key != mKeys[mStart + mCnt]) {
-//            std::cout << "Sequential Read error: not an expected key" << std::endl;
-//            exit(-1);
-//        }
-//        mCnt += 1;
-//    }
-//
-//private:
-//    const threadsafe_vector<std::string>& mKeys;
-//    unsigned mStart;
-//    unsigned& mCnt;
-//};
-//
-//void sequentialRead(LSMTree* lsmTree, const threadsafe_vector<std::string>& keys)
-//{
-//    RandNum_generator rng(0, keys.size() - 1);
-//    RandNum_generator rng1(10, 100);
-//
-//    unsigned lenKeys = keys.size();
-//    // Random ranges
-//    unsigned lenAccu = 0;
-//    while (lenAccu < lenKeys) {
-//        std::string lower, upper;
-//
-//        unsigned start = rng.nextNum();
-//        lower = keys[start];
-//
-//        unsigned len = rng1.nextNum();
-//        if (start + len >= lenKeys) {
-//            len = lenKeys - start;
-//        }
-//        if (start + len == lenKeys) {
-//            upper = "";
-//        } else {
-//            upper = keys[start + len];
-//        }
-//
-//        unsigned keyCnt = 0;
-//        MyVisitor visitor(keys, start, keyCnt);
-//        engine->Range(lower, upper, visitor);
-//        if (keyCnt != len) {
-//            std::cout << "Range size not match, expected: " << len
-//                      << " actual: " << keyCnt << std::endl;
-//            exit(-1);
-//        }
-//
-//        lenAccu += len;
-//    }
-//
-//    // Whole range traversal
-//    unsigned keyCnt = 0;
-//    MyVisitor visitor(keys, 0, keyCnt);
-//    engine->Range("", "", visitor);
-//    if (keyCnt != lenKeys) {
-//        std::cout << "Range size not match, expected: " << lenKeys
-//                  << " actual: " << keyCnt << std::endl;
-//        exit(-1);
-//    }
-//}
 
 int main()
 {
 //    auto numThreads = std::thread::hardware_concurrency();
-    auto numThreads = 1;
+    auto numThreads = 4;
     std::cout << numThreads << std::endl;
 
     LSMTree* lsmTree = new LSMTree(DEFAULT_BUFFER_NUM_PAGES, DEFAULT_BF_BITS_PER_ENTRY, DEFAULT_THREAD_COUNT, DEFAULT_TREE_DEPTH, DEFAULT_TREE_FANOUT);
@@ -245,9 +153,9 @@ int main()
     auto writeStart = std::chrono::high_resolution_clock::now();
     
     unsigned numWrite = 10000;
-    std::vector<thread> writers;
+    std::vector<boost::thread> writers;
     for (int i = 0; i < numThreads; ++i) {
-        writers.emplace_back(thread(write_, lsmTree, ref(keys), numWrite));
+        writers.emplace_back(boost::thread(write_, lsmTree, boost::ref(keys), numWrite));
     }
     for (auto& th : writers) {
         th.join();
@@ -267,12 +175,13 @@ int main()
     
     
     // Random Read
+
     auto rreadStart = std::chrono::high_resolution_clock::now();
-    
+
     unsigned numRead = 10000;
-    std::vector<thread> rreaders;
+    std::vector<boost::thread> rreaders;
     for (int i = 0; i < numThreads; ++i) {
-        rreaders.emplace_back(thread(randomRead, lsmTree, cref(keys), numRead));
+        rreaders.emplace_back(boost::thread(randomRead, lsmTree, boost::cref(keys), numRead));
     }
     for (auto& th : rreaders) {
         th.join();

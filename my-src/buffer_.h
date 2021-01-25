@@ -14,7 +14,7 @@
 class Buffer {
 private:
     int size;
-
+    boost::shared_mutex rwmutex;
 public:
     std::set<entry_t> entries;
 

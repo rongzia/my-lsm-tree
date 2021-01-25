@@ -8,4 +8,4 @@
 使用方法参照test-lsm.cpp
 本地生成文件见config.h中BASEDIR
 
-单线程，KV分离
+多线程，KV分离

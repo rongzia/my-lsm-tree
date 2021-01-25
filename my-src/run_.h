@@ -23,6 +23,7 @@ private:
     sst_t sst;
     entry_t *entry_ptr;
     entry_t lower_bound_(entry_t *entries, size_t size, entry_t key);
+    boost::shared_mutex mutex;
 public:
 
     Run(const long &size_per_run, const int &bf_bits_per_entry, const int &level_id, const int &run_id);

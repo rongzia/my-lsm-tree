@@ -34,8 +34,8 @@ RetCode DataStore::init() {
 }
 
 RetCode DataStore::append(const std::string &value, Location *location) {
-
     // std::cout<<"DataStore::Read::"<<std::endl;
+
     if (0 != FileAppend(fd_, value)) {
         return otherError;
     }
@@ -48,6 +48,7 @@ RetCode DataStore::append(const std::string &value, Location *location) {
 }
 
 RetCode DataStore::read_data(const Location &l, std::string *value) {
+    boost::unique_lock<boost::shared_mutex> ul(rwmutex);
     int fd = open(path.c_str(), O_RDONLY, 0644);
     if (fd < 0) {
         return otherError;
