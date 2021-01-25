@@ -9,8 +9,8 @@ using namespace std;
 int main()
 {
     cout<<"entry size : "<<sizeof(entry_t)<<endl;
-    entry_t e1("10");
-    entry_t e2("2");
+    entry_t e1("4");
+    entry_t e2("3");
 
-    cout<<(e1<e2)<<endl;
+    cout<<(e1>e2)<<endl;
 }

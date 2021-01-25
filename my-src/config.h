@@ -18,6 +18,8 @@
 #define DEFAULT_BF_BITS_PER_ENTRY 3   //跟bloomfilter大小相关,每个键值对在bloomfilter中对应位数
 
 #define MAX_KEY_LENGTH 8
+#define MAX_VALUE_LENGTH 128
+
 #define BASEDIR "/home/rrzhang/Desktop/sst/"
 //#define BASEDIR "C:\\Users\\rrzhang\\Desktop\\sst\\"
 

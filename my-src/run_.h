@@ -17,18 +17,16 @@ private:
     size_t used_size, size;
     size_t mmap_size;
 
-//    size_t fence_page_size;
-//    std::vector<KEY_t> fence; //类似于索引，用pagesize取模，pagesize作个数用，并不是作页面大小用
-
     sst_t sst;
     entry_t *entry_ptr;
-    entry_t lower_bound_(entry_t *entries, size_t size, entry_t key);
     boost::shared_mutex mutex;
+
+    entry_t lower_bound_(entry_t *entries, size_t size, entry_t key);
+
 public:
 
     Run(const long &size_per_run, const int &bf_bits_per_entry, const int &level_id, const int &run_id);
     ~Run();
-
     void init(int level_id, int run_id);
 
     void mapping();

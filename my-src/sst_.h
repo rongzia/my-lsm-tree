@@ -9,29 +9,33 @@
 #include <cstring>
 #include "config.h"
 
-struct Location {
-    Location() : offset(0), len(0) {
-    }
-    uint64_t offset;
-    uint32_t len;
-};
-
 struct entry_ {
     char key[MAX_KEY_LENGTH];
-    Location location;
+    char value[MAX_VALUE_LENGTH];
 
     entry_() {};
-
+    entry_(const entry_ &entry){
+        memcpy(key, entry.key, MAX_KEY_LENGTH);
+        memcpy(value, entry.value, MAX_VALUE_LENGTH);
+    }
     entry_(std::string key_) {
         memset(key, 0, MAX_KEY_LENGTH);
-        memcpy(key, key_.data(), key_.size());
+        memcpy(key, key_.data(), key_.size() < MAX_KEY_LENGTH ? key_.size() : MAX_KEY_LENGTH);
+    }
+    entry_(std::string key_, std::string value_) {
+        memset(key, 0, MAX_KEY_LENGTH);
+        memcpy(key, key_.data(), key_.size() < MAX_KEY_LENGTH ? key_.size() : MAX_KEY_LENGTH);
+        memset(value, 0, MAX_VALUE_LENGTH);
+        memcpy(value, value_.data(), value_.size() < MAX_VALUE_LENGTH ? value_.size() : MAX_VALUE_LENGTH);
     }
 
-// TODO: 构造成string才好比较，不然比较的是地址,可能影响性能，后期改成自定义函数
-    bool operator==(const entry_ &other) const { return std::string(key, MAX_KEY_LENGTH) == std::string(other.key, MAX_KEY_LENGTH); }
-    bool operator<(const entry_ &other) const { return std::string(key, MAX_KEY_LENGTH) < std::string(other.key, MAX_KEY_LENGTH); }
-    bool operator>(const entry_ &other) const { return std::string(key, MAX_KEY_LENGTH) > std::string(other.key, MAX_KEY_LENGTH); }
-//    bool operator<=(const entry_ &other) const { return std::string(key, MAX_KEY_LENGTH) == std::string(other.key, MAX_KEY_LENGTH); }
+    entry_& operator = (const entry_ &entry){
+        memcpy(key, entry.key, MAX_KEY_LENGTH);
+        memcpy(value, entry.value, MAX_VALUE_LENGTH);
+    }
+    bool operator==(const entry_ &other) const { return 0 == memcmp(key, other.key, MAX_KEY_LENGTH); }
+    bool operator<(const entry_ &other) const { return memcmp(key, other.key, MAX_KEY_LENGTH) < 0; }
+    bool operator>(const entry_ &other) const { return memcmp(key, other.key, MAX_KEY_LENGTH) > 0; }
 };
 typedef struct entry_ entry_t;
 
@@ -40,8 +44,6 @@ struct sst {
     std::string path;
 };
 typedef struct sst sst_t;
-
-//这个算法中，first是最终要返回的位置
 
 
 #endif //LSM_TREE_SST_H

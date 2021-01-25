@@ -10,8 +10,6 @@
 #include <algorithm>
 #include "sst_.h"
 
-
-
 struct merge_entry {    //类似run
     entry_t *entries;
     size_t used_size;
@@ -19,7 +17,7 @@ struct merge_entry {    //类似run
 
     merge_entry(){}
     merge_entry(entry_t *e, size_t u, size_t c) : entries(e), used_size(u), current_index(c){}
-    bool done(void) const {return current_index == used_size;}
+//    bool done(void) const {return current_index == used_size;}
 
 };
 
@@ -30,7 +28,6 @@ private:
     std::vector<merge_entry_t> merge_vector;
     int num_runs;
     int all_entries;
-
 
 public:
     MergeContext() : num_runs(0),all_entries(0) {}

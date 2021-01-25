@@ -8,4 +8,7 @@
 使用方法参照test-lsm.cpp
 本地生成文件见config.h中BASEDIR
 
-多线程，KV分离
+多线程
+
+key = 8 Byte
+value = 128 Byte

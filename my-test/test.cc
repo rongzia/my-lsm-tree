@@ -70,41 +70,20 @@ std::string random_str(RandNum_generator& rng, std::size_t strLen)
 }
 
 typedef unsigned long long hash64_t;
-hash64_t fnv1_hash_64(const std::string& str)
-{
-    static const hash64_t fnv_offset_basis = 14695981039346656037u;
-    static const hash64_t fnv_prime = 1099511628211u;
-    hash64_t hv = fnv_offset_basis;
-    for (auto ch : str) {
-        hv *= fnv_prime;
-        hv ^= ch;
-    }
-    return hv;
-}
 
-std::string hash_to_str(hash64_t hash)
-{
-    const int cnt = 8;
-    char val[cnt];
-    for (int i = 0; i < cnt; ++i) {
-        val[cnt - i - 1] = hash % 256;
-        hash /= 256;
-    }
-    return std::string(val, cnt);
-}
 
 std::string key_from_value(const std::string& val)
 {
     std::string key(8, ' ');
     
-    key[0] = val[729];
-    key[1] = val[839];
-    key[2] = val[25];
-    key[3] = val[202];
-    key[4] = val[579];
-    key[5] = val[1826];
-    key[6] = val[369];
-    key[7] = val[2903];
+    key[0] = val[32];
+    key[1] = val[65];
+    key[2] = val[3];
+    key[3] = val[96];
+    key[4] = val[121];
+    key[5] = val[48];
+    key[6] = val[84];
+    key[7] = val[29];
     
     return key;
 }
@@ -113,7 +92,7 @@ void write_(LSMTree* lsmTree, threadsafe_vector<std::string>& keys, unsigned num
 {
     RandNum_generator rng(1, 255);
     for (unsigned i = 0; i < numWrite; ++i) {
-        std::string val(random_str(rng, 4096));
+        std::string val(random_str(rng, 128));
         
         //std::string key = hash_to_str(fnv1_hash_64(val)); // strong hash, slow but barely any chance to duplicate
         std::string key(key_from_value(val)); // random positions, faster but tiny chance to duplicate
@@ -151,8 +130,7 @@ int main()
     
     // Write
     auto writeStart = std::chrono::high_resolution_clock::now();
-    
-    unsigned numWrite = 10000;
+    unsigned numWrite = 100000;
     std::vector<boost::thread> writers;
     for (int i = 0; i < numThreads; ++i) {
         writers.emplace_back(boost::thread(write_, lsmTree, boost::ref(keys), numWrite));
@@ -166,19 +144,16 @@ int main()
     std::cout << "Writing takes: "
               << std::chrono::duration<double, std::milli>(writeEnd - writeStart).count()
               << " milliseconds" << std::endl;
-    
     std::cout << keys.size() << std::endl;
+    std::cout <<  keys.size()*1000 / std::chrono::duration<double, std::milli>(writeEnd - writeStart).count() << "/s" <<std::endl;
     std::sort(keys.begin(), keys.end());
     auto last = std::unique(keys.begin(), keys.end());
     keys.erase(last, keys.end());
-//    std::cout << engine->size() << " == " << keys.size() << std::endl;
     
     
     // Random Read
-
     auto rreadStart = std::chrono::high_resolution_clock::now();
-
-    unsigned numRead = 10000;
+    unsigned numRead = 100000;
     std::vector<boost::thread> rreaders;
     for (int i = 0; i < numThreads; ++i) {
         rreaders.emplace_back(boost::thread(randomRead, lsmTree, boost::cref(keys), numRead));
@@ -192,24 +167,8 @@ int main()
     std::cout << "Random read takes: "
               << std::chrono::duration<double, std::milli>(rreadEnd - rreadStart).count()
               << " milliseconds" << std::endl;
-    
-    
-    // Sequential Read
-//    auto sreadStart = std::chrono::high_resolution_clock::now();
-//
-//    std::vector<std::thread> sreaders;
-//    for (int i = 0; i < numThreads; ++i) {
-//        sreaders.emplace_back(std::thread(sequentialRead, engine, std::cref(keys)));
-//    }
-//    for (auto& th : sreaders) {
-//        th.join();
-//    }
-//    sreaders.clear();
-//
-//    auto sreadEnd = std::chrono::high_resolution_clock::now();
-//    std::cout << "Sequential read takes: "
-//              << std::chrono::duration<double, std::milli>(sreadEnd - sreadStart).count()
-//              << " milliseconds" << std::endl;
+    std::cout <<  keys.size()*1000 / std::chrono::duration<double, std::milli>(rreadEnd - rreadStart).count() << "/s" <<std::endl;
+    std::cout << keys.size() << std::endl;
     
     delete lsmTree;
 

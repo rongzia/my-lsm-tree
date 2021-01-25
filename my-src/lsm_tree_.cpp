@@ -5,16 +5,14 @@
 #include "lsm_tree_.h"
 
 LSMTree::LSMTree(int buffer_size, int bits_per_entry, int num_threads, int depth, int fanout)
-        : buffer(buffer_size), bf_bits_per_entry(bits_per_entry)
-        , dataStore(BASEDIR) {
+        : buffer(buffer_size), bf_bits_per_entry(bits_per_entry) {
     long run_size = buffer_size;
 
     for (int i = 0; i < depth; i++){
         levels.push_back(new Level(fanout, run_size, i+1));
         run_size = run_size*fanout;
-        cout<<"levels["<<i<<"]"<<"'s"<<" run_size: "<<levels[i]->get_size_per_run() << ". fanout: "<<levels[i]->get_num_run()<<endl;
+        std::cout<<"levels["<<i<<"]"<<"'s"<<" run_size: "<<levels[i]->get_size_per_run() << ". fanout: "<<levels[i]->get_num_run()<<std::endl;
     }
-    dataStore.init();
 }
 
 LSMTree::~LSMTree() {
@@ -25,19 +23,17 @@ LSMTree::~LSMTree() {
     }
 }
 
-void LSMTree::merge_down(vector<Level*>::iterator current_level) {
-
-    vector<Level*>::iterator next;
+void LSMTree::merge_down(std::vector<Level*>::iterator current_level) {     //std::cout<< "in LSMTree::merge_down"<< std::endl;
+    std::vector<Level*>::iterator next;
     MergeContext merge_ctx;
     entry_t entry;
 
     assert( current_level >= levels.begin());
 
-    if ( (*current_level)->remaining() > 0) {
-//        std::cout<< "当前level仍有空间" << std::endl;
+    if ( (*current_level)->remaining() > 0) {   // std::cout<< "当前level仍有空间" << std::endl;
         return;
     } else if (current_level >= levels.end() - 1) {  //levels.end()-1 为最下一层
-        cout << ("No more space in tree.");
+        std::cout << ("No more space in tree.");
     } else {
         next = current_level + 1;
     }
@@ -50,51 +46,43 @@ void LSMTree::merge_down(vector<Level*>::iterator current_level) {
 
     //把当前level的所有run添加到上下文当中
     for (auto &run : (*current_level)->runs) {
-        run->mapping();
         merge_ctx.add(run->get_entry_ptr(), run->get_used_size());
     }
 
     (*next)->runs.push_front( new Run((*next)->get_size_per_run(), bf_bits_per_entry, (*next)->get_Level_id(), (*next)->runs.size()) );
-    (*next)->runs.front()->mapping();
 
-    int count = 0;
     while (!merge_ctx.done()) {
         entry = merge_ctx.next();
-        // 把已经删除的键值对过滤掉，对应的offset < 0
-        if ( entry.location.offset >= 0) {
+//        if ( entry.location.offset >= 0) {    // 把已经删除的键值对过滤掉，对应的offset < 0
             (*next)->runs.front()->put(entry);
-            count++;
-        }
+//        }
     }
-
-    (*next)->runs.front()->unmap();
 
     for (auto &run : (*current_level)->runs) {
-        run->deletefile();
-//        run.~Run();
+        run->deletefile();      // run.~Run();
     }
 
-//    (*current_level)->runs.clear();       //此处会调用~run()析构函数，不需要像上面显示调用
-    (*current_level)->clear();
+    (*current_level)->clear();      //此处会调用~run()析构函数，不需要像上面显示调用
 }
+
+RetCode LSMTree::put(const entry_t &entry){
+    put(entry.key, entry.value);
+}
+
 
 RetCode LSMTree::put(const KEY_t &key, const VAL_t &value) {
     boost::unique_lock<boost::shared_mutex> ul(mutex);
-
-    Location location;
-    entry_t entry(key);
-
-    dataStore.append(value, &location);
-    entry.location = location;
-
-    if (succ == buffer.put(entry)) {
-        return succ;
+    if(buffer.full()){
+        merge_down(levels.begin());
+        flush_buffer();
     }
-
-    merge_down(levels.begin());
     ul.unlock();
-    flush_buffer();
-    assert(buffer.put(entry));
+
+    entry_t entry( key, value );
+    RetCode ret = buffer.put(entry);
+
+    assert(succ == ret);
+    return ret;
 }
 
 VAL_t LSMTree::get(const KEY_t &key){
@@ -111,26 +99,25 @@ RetCode LSMTree::get(const KEY_t &key, VAL_t* value ) {     //    std::cout<< "i
     entry_t entry(key);
     RetCode ret = buffer.get(&entry);
     if(succ == ret){
-        ret = dataStore.read_data(entry.location, value);
+        value->assign(entry.value, MAX_VALUE_LENGTH);
         return ret;
     }
     else if(keyNotFound == ret){
         ret = search_run(&entry);
+        value->assign(entry.value, MAX_VALUE_LENGTH);
         assert( succ == ret);
-        ret = dataStore.read_data(entry.location, value);
         return ret;
     }
 
 // TODO: 判断值是否存在或已删除
 //    if (nullptr != value && VAL_TOMBSTONE != *value) { return value; }
 
-//    std::cout<< "out LSMTree::get"<< std::endl;
     return ret;
 }
 
 RetCode LSMTree::search_run(entry_t* entry){
-    vector<Level*>::iterator it_level = levels.begin();
-    deque<Run*>::iterator it_run;
+    std::vector<Level*>::iterator it_level = levels.begin();
+    std::deque<Run*>::iterator it_run;
     RetCode ret = keyNotFound;
 
     while( it_level != levels.end()){
@@ -146,14 +133,10 @@ RetCode LSMTree::search_run(entry_t* entry){
 }
 
 void LSMTree::flush_buffer(){
-    boost::unique_lock<boost::shared_mutex> ul(mutex);
 
     levels.front()->runs.push_front( new Run(levels.front()->get_size_per_run(), bf_bits_per_entry, 1 , levels.front()->runs.size()) );
-    levels.front()->runs.front()->mapping();
     for (const auto &entry : buffer.entries) {
         levels.front()->runs.front()->put(entry);
     }
-    levels.front()->runs.front()->unmap();
-
     buffer.clear();
 }

@@ -14,13 +14,16 @@
 #include "run_.h"
 
 Run::Run(const long &size_per_run, const int &bf_bits_per_entry, const int &level_id, const int &run_id) :
-        size(size_per_run)
-        ,bloomFilter(size_per_run * bf_bits_per_entry) {
+        size(size_per_run), bloomFilter(size_per_run * bf_bits_per_entry) {
+    used_size = 0;
+    mmap_size = size * sizeof(entry_t);
+    entry_ptr = nullptr;
+
     init(level_id, run_id);
 }
 
 Run::~Run() {
-    if(sst.fd >= 0){
+    if (sst.fd >= 0) {
         sst.fd = close(sst.fd);
     }
     if (entry_ptr != nullptr) {
@@ -29,10 +32,7 @@ Run::~Run() {
 }
 
 void Run::init(int level_id, int run_id) {
-    used_size = 0;
-    mmap_size = size * sizeof(entry_t);
 
-    entry_ptr = nullptr;
 
     std::string path = BASEDIR + std::to_string(level_id) + "_" + std::to_string(run_id) + ".txt";
 //    std::cout << path << std::endl;
@@ -41,21 +41,19 @@ void Run::init(int level_id, int run_id) {
     if (!(0 == access(path.c_str(), F_OK))) { new_create = true; }
 
     int fd = open(path.c_str(), O_RDWR | O_CREAT, 0644);
-    if (fd >= 0) {
-        //文件打洞
+    if (fd >= 0) {  //文件打洞
         if (posix_fallocate(fd, 0, mmap_size) != 0) {
             std::cerr << "posix_fallocate failed: " << strerror(errno) << std::endl;
             close(fd);
         }
     }
-    //  if (fd > 0) { std::cout << "文件打开或创建成功" << std::endl; }
-    if(new_create) {
-        entry_ptr = (entry_t *) mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-        memset(entry_ptr, 0, mmap_size);
-    }
+//      if (fd > 0) { std::cout << "文件打开或创建成功" << std::endl; }
 
     sst.path = path;
     sst.fd = fd;
+
+    mapping();
+    if (new_create) { memset(entry_ptr, 0, mmap_size); }
 }
 
 void Run::mapping() {
@@ -69,53 +67,45 @@ void Run::mapping(size_t index, size_t s) {
 }
 
 void Run::unmap() {
-    munmap(entry_ptr, mmap_size);
+    munmap(entry_ptr, mmap_size);       //若后面mapping改变了长度，这个地方会出问题
     entry_ptr = nullptr;
 }
 
-void Run::put( entry_t entry) {
-//    std::cout << "Run::put" << std::endl;
+void Run::put(entry_t entry) {     //    std::cout << "Run::put" << std::endl;
+    assert(entry_ptr != nullptr);
     assert(used_size <= size);
-    KEY_t key(entry.key, MAX_KEY_LENGTH);
 
-    bloomFilter.set((char *) entry.key);
-
-    memcpy(&entry_ptr[used_size++] , &entry, sizeof(entry_t));    //entry_ptr[used_size++] = entry;
+    bloomFilter.set(entry.key);
+    memcpy(&entry_ptr[used_size++], &entry, sizeof(entry_t)); //    entry_ptr[used_size++] = entry;
 }
 
-entry_t Run::lower_bound_(entry_t *entries, size_t size, entry_t key)
-{
-    size_t first = 0,middle;
+entry_t Run::lower_bound_(entry_t *entries, size_t size, entry_t key) {
+    size_t first = 0, middle;
     size_t half, len = size;
 
-    while(len > 0) {
+    while (len > 0) {
         half = len >> 1;
         middle = first + half;
-        if(entries[middle] < key) {
+        if (entries[middle] < key) {
             first = middle + 1;
-            len = len-half-1;       //在右边子序列中查找
-        }
-        else
+            len = len - half - 1;       //在右边子序列中查找
+        } else
             len = half;            //在左边子序列（包含middle）中查找
     }
     return entries[first];
 }
 
-RetCode Run::get(entry_t* entry) {      //    std::cout << "in Run::get" << std::endl;
-
-    boost::unique_lock<boost::shared_mutex> ul(mutex);
-
+RetCode Run::get(entry_t *entry) {      //    std::cout << "in Run::get" << std::endl;
     RetCode ret = keyNotFound;
+    if (!bloomFilter.is_set(entry->key)) {
+        return ret;
+    }
+    entry_t search_entry = lower_bound_(entry_ptr, size, *entry);
 
-    mapping(0,  size * sizeof(entry_t));
-    entry_t search_entry  = lower_bound_(entry_ptr, size, *entry);
-    ul.unlock();
-
-    if(*entry == search_entry){
-        (*entry).location = search_entry.location;
+    if (*entry == search_entry) {
+        (*entry) = search_entry;
         ret = succ;
     }
-
     return ret;
 }
 

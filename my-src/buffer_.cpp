@@ -7,31 +7,33 @@
 
 RetCode Buffer::put(const entry_t &entry) {
     boost::unique_lock<boost::shared_mutex> ul(rwmutex);
-    if (entries.size() == size) {
-        return bufferFull;
-    }
 
+    for (; entries.size() == size;) {
+        cva.wait(ul);
+    }
     std::set<entry_t>::iterator it_entry = entries.find(entry);
     if (it_entry != entries.end()) {
         entries.erase(it_entry);
     }
 
     entries.insert(entry);
+    assert(entries.size() <= size);
     return succ;
 }
 
-RetCode Buffer::get(entry_t* entry) const {
+RetCode Buffer::get(entry_t *entry) const {
 //    boost::unique_lock<boost::shared_mutex> ul(rwmutex);
     std::set<entry_t>::iterator it_entry = entries.find(*entry);
 
     if (it_entry == entries.end()) {
         return keyNotFound;
     } else {
-        (*entry).location = it_entry->location;
+        *entry = *it_entry;
         return succ;
     }
 }
 
+// TODO:
 std::vector<entry_t> *Buffer::range(const entry_t &start_entry, const entry_t &end_entry) const {
     entry_t searched_entry;
     std::set<entry_t>::iterator subrange_start, subrange_end;
@@ -47,5 +49,7 @@ std::vector<entry_t> *Buffer::range(const entry_t &start_entry, const entry_t &e
 
 
 void Buffer::clear() {
+    boost::unique_lock<boost::shared_mutex> ul(rwmutex);
     entries.clear();
+    cva.notify_all();
 }
